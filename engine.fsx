@@ -76,22 +76,59 @@ let filterSpecial (item: char) (tweet: string) =
 
 let serverActor (mailbox: Actor<_>) =
 
-    let mutable reqList = []
+    let mutable reqList = List.Empty
+    let mutable userList = List.Empty
     let userTweetTable = new Dictionary<string, list<String>>()
+    let mutable allTweets = List.Empty
     let tweetTable = new Dictionary<string, list<String>>()
     let retweetTable = new Dictionary<string, list<String>>()
     let followers = new Dictionary<string, list<String>>()
     let following = new Dictionary<string, list<String>>()
     let hashTable = new Dictionary<string, list<String>>()
     let mentionTable = new Dictionary<string, list<String>>()
-    let mutable dcList = []
+    let mutable dcList = List.Empty
     let mutable count = 0
 
     let isOnline userId = 
-        if List.contains userId dcList then
+        if not(List.contains userId dcList) then
             true
         else
             false    
+
+    let searchResults (query:string) = 
+        let output = new Dictionary<string, list<String>>()
+        let mutable tweetOutput = List.Empty
+        let queryLower = query.ToLower.ToString()
+        for tweet in allTweets do
+            let words = tweet.ToString().Split(" ")
+            let mutable tempBreak = false
+            let mutable searchIndex = 0
+            while not tempBreak && searchIndex < words.Length do
+                let temp = words.[searchIndex].ToLower.ToString()
+                if temp.Contains queryLower then
+                    tweetOutput <- List.append tweetOutput [tweet]
+                    tempBreak <- true
+                else
+                    searchIndex <- searchIndex + 1
+        let mutable hashOutput = List.Empty
+        for key in hashTable.Keys do
+            let temp = key.ToLower.ToString()
+            if temp.Contains queryLower then
+                hashOutput <- List.append hashOutput [key]
+
+        let mutable userOutput = List.Empty
+        for user in userList do
+            let temp = user.ToString().ToLower.ToString()
+            if temp.Contains queryLower then
+                userOutput <- List.append userOutput [user]
+
+        if userOutput = List.Empty && hashOutput = List.Empty && tweetOutput = List.Empty then
+            output.Add("Output",["No results found for" + query])
+        else
+            output.Add("tweets",tweetOutput)
+            output.Add("hashTags",hashOutput)
+            output.Add("users",userOutput)
+        output
 
     let rec loop () =
 
@@ -111,6 +148,9 @@ let serverActor (mailbox: Actor<_>) =
 
                 match message.query with
 
+                | "SignUp" ->
+                    userList <- List.append userList [userId]
+
                 | "Tweet" -> 
 
                     let tweet = message.content
@@ -121,6 +161,8 @@ let serverActor (mailbox: Actor<_>) =
                         tweetTable.[userId] <- List.append tweetTable.[userId] [tweet]
                     else
                         tweetTable.Add(userId,[tweet])
+
+                    allTweets <-List.append allTweets [tweet]    
 
                     if count >= numTweets then
                         terminate <- true
@@ -154,6 +196,26 @@ let serverActor (mailbox: Actor<_>) =
                             userMessage payload subId
                       //  else
 
+                | "Retweet" ->
+
+                    let tweet = message.content
+                    let mutable tempBreak = false
+                    let mutable index = 0
+                    let keys = List(tweetTable.Keys)
+                    while not tempBreak && index < keys.Capacity do
+                        if List.contains tweet tweetTable.[keys.[index]] then
+                            let res = tweetTable.[keys.[index]] |> List.find(fun(x) -> x = tweet)  
+                            tempBreak <- true
+                            let destUser = keys.[index]
+                            let payload = {
+                                reqId = "1234"
+                                userId = "Server"
+                                content = userId + " Re - tweeted your tweet " + res 
+                                query  = "ReTweetNotif"
+                            }
+
+                            userMessage payload destUser
+
 
                 | "Follow" -> 
 
@@ -167,9 +229,24 @@ let serverActor (mailbox: Actor<_>) =
                     if following.ContainsKey userId then
                         following.[userId] <- List.append following.[userId] [followed]
 
-                // | "Search" ->
+                | "Search" ->
+                    let query = message.content
 
+                    let searchOutput = Json.serialize (searchResults query)
 
+                    let payload = {
+                        reqId = "1234"
+                        userId = "Server"
+                        content = searchOutput
+                        query = "SearchResults"
+                    }
+
+                    userMessage payload userId
+
+                | "Login" ->
+
+                    dcList <- dcList |> List.filter(fun(x) -> x <> userId)
+                    
                 | "Logout" ->
 
                     dcList <- List.append dcList [userId]
