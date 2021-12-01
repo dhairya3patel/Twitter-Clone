@@ -86,7 +86,7 @@ let getTimeStamp =
     let timeStamp = TimeZoneInfo.ConvertTimeFromUtc(utc, zone);
     timeStamp.ToString("MMM-dd-yyyy HH:mm:ss tt")
 
-let log (message:apiComm)= 
+let logRequest (message:apiComm)= 
 
     let logger = File.AppendText(path)
     let time = getTimeStamp
@@ -97,6 +97,11 @@ let log (message:apiComm)=
         logger.WriteLine ("[" + time + "]: " + "Content: " + message.content)
     logger.Close()
 
+let appLog message = 
+    let logger = File.AppendText(path)
+    let time = getTimeStamp
+    logger.WriteLine ("[" + time + "]: " + message)
+    logger.Close()
 
 let serverActor (mailbox: Actor<_>) =
 
@@ -166,7 +171,7 @@ let serverActor (mailbox: Actor<_>) =
 
             let requestId = message.reqId
 
-            log message
+            logRequest message
 
             if not (List.contains requestId reqList) then
 
