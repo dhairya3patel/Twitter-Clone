@@ -71,14 +71,49 @@ type apiComm = {
 
 
 let User (userid: int) (mailbox: Actor<_>) = 
-    let id = userid
+    // let id = userid
+    let mutable reqList = []
+    let awayTweets = []
+    let mutable myTweets = []
+    let mutable myTweetsCount = 0
+    let timer = Diagnostics.Stopwatch()
+    let mutable timerState = 0.0
+    let mutable supervisorRef = mailbox.Self
+    let id = mailbox.Self.Path.Name.Split("_").[1] |> int
+    let mutable status = "online"
+
     let rec loop () =
         actor {
             let! jsonMessage = mailbox.Receive()
             let message = Json.deserialize jsonMessage
             let action = message.query
+
+            if timer.Elapsed.TotalSeconds - timerState > 1.0 && status = "offline" then
+
+                let payload = {
+
+                    reqId = "1234"
+                    userId = id |> string
+                    content = ""
+                    query = "UpdateFeed"
+
+                }
+
+                engineMessage payload
+                status <- "online"
+                timerState <- timer.Elapsed.TotalSeconds
             
             match action with
+            | "Login" ->    let Guid = Guid.NewGuid()
+                            let apiComm = {
+                                reqId = Guid.ToString()
+                                userId = userid |> string
+                                content = ""
+                                query = "Login"
+                            }
+                            engineMessage apiComm
+                            // Console.WriteLine(apiComm)
+
             | "Register" -> Console.WriteLine("%s has been registered", userid)
                             let Guid = Guid.NewGuid()
                             let apiComm = {
@@ -88,7 +123,7 @@ let User (userid: int) (mailbox: Actor<_>) =
                                 query = "SignUp"
                             }
                             engineMessage apiComm
-                            Console.WriteLine(apiComm)
+                            // Console.WriteLine(apiComm)
 
             | "Subscribe" -> let Guid = Guid.NewGuid()
                              let apiComm = {
@@ -99,6 +134,20 @@ let User (userid: int) (mailbox: Actor<_>) =
                                 }
                              engineMessage apiComm
                             // Console.WriteLine(apiComm)
+
+            | "Tweet" ->    let liveTweet = constructTweet
+                            Console.WriteLine("User %s tweeted %s", id.ToString liveTweet)
+                            myTweets <- List.append myTweets [liveTweet]
+                            myTweetsCount <- myTweetsCount + 1
+                            let Guid = Guid.NewGuid()
+                            let apiComm = {
+                                reqId = Guid.ToString()
+                                userId = userid |> string
+                                content = liveTweet
+                                query = "Tweet"
+                                }
+                            engineMessage apiComm
+
             
             | "Retweet" ->  let Guid = Guid.NewGuid()
                             let apiComm = {
@@ -110,6 +159,7 @@ let User (userid: int) (mailbox: Actor<_>) =
                             engineMessage apiComm
                             // Console.WriteLine(apiComm)
 
+            | "Logout" -> status <- "offline"
             // | "Tweet" -> 
             | _ -> ignore()
 
