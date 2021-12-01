@@ -78,8 +78,12 @@ type apiComm = {
     query: String
 }
 
+type Communication = 
+    | Initiate of string
 
-let User  (mailbox: Actor<_>) = 
+
+
+let User (mailbox: Actor<_>) = 
     // let id = userid
     let mutable reqList = []
     let awayTweets = []
@@ -94,9 +98,9 @@ let User  (mailbox: Actor<_>) =
     let rec loop () =
         actor {
             let! jsonMessage = mailbox.Receive()
-            Console.WriteLine("Before" ,jsonMessage.ToString())
+            Console.WriteLine("Before") //+ jsonMessage.ToString())
             let message = Json.deserialize<apiComm> jsonMessage
-            Console.WriteLine("Hello" ,message.ToString())
+            Console.WriteLine("Hello") //+ message.ToString())
             let action = message.query
 
             if timer.Elapsed.TotalSeconds - timerState > 1.0 && status = "offline" then
@@ -106,7 +110,7 @@ let User  (mailbox: Actor<_>) =
                     // reqId = "1234"
                     userId = id |> string
                     content = ""
-                    query = "UpdateFeed"
+                    query = "Login"
 
                 }
 
@@ -187,26 +191,29 @@ let Supervisor (numNodes: int) (tweets: int) (mailbox: Actor<_>) =
             let! message = mailbox.Receive()
 
             match message with
-            | "Initiate" -> nodesList <- [ for i in 1 .. currentNodes do yield (spawn system ("User_" + string (i))) User ]
-                            // Console.WriteLine(nodesList)
-                            // let Guid = Guid.NewGuid()
-                            let payload = {
-                                // reqId = Guid.ToString() 
-                                userId = "" 
-                                content = "" 
-                                query = "Register"
-                            }
+            | Initiate(_) -> 
+                nodesList <- [ for i in 1 .. currentNodes do yield (spawn system ("User_" + string (i))) User ]
+                Console.WriteLine(nodesList.ToString())
+                // let Guid = Guid.NewGuid()
+                let payload = {
+                    // reqId = Guid.ToString() 
+                    userId = "" 
+                    content = "" 
+                    query = "Register"
+                }
 
-                            for j in nodesList do
-                                j <! (Json.serialize payload)
-                            // Console.WriteLine(payload)
-                            // Console.WriteLine("Hello")
+                nodesList |> List.iter (fun node -> node <! Json.serialize payload)
+                // for j in nodesList do
+                //     j <! (Json.serialize payload)
+                // Console.WriteLine(payload)
+                // Console.WriteLine("Hello")
 
-            | _ -> ignore()
+            // | _ -> ignore ()
 
             return! loop ()
         }
     loop()
 
 let supervisorRef = spawn system "supervisorRef" (Supervisor numNodes tweets)
-supervisorRef <! "Initiate"
+supervisorRef <! Initiate("Initiate")
+system.WhenTerminated.Wait()
