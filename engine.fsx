@@ -13,8 +13,7 @@ open FSharp.Json
 open System.Collections.Generic
 
 
-let numNodes = fsi.CommandLineArgs.[1] |> int
-let numTweets = fsi.CommandLineArgs.[2] |> int
+let numTweets = fsi.CommandLineArgs.[1] |> int
 let mutable terminate = false
 
 let HASHTAG = '#'
@@ -30,8 +29,8 @@ let config =
             }
             remote {
                 helios.tcp {
-                    port = 0
-                    hostname = localhost
+                    port = 9091
+                    hostname = 127.0.0.1
                 }
             }
         }")
