@@ -106,9 +106,9 @@ let User (mailbox: Actor<_>) =
     let rec loop () =
         actor {
             let! jsonMessage = mailbox.Receive()
-            Console.WriteLine("Before") //+ jsonMessage.ToString())
+            // Console.WriteLine("Before") //+ jsonMessage.ToString())
             let message = Json.deserialize<apiComm> jsonMessage
-            Console.WriteLine("Hello") //+ message.ToString())
+            // Console.WriteLine("Hello") //+ message.ToString())
             let action = message.query
 
             if timer.Elapsed.TotalSeconds - timerState > 1.0 && status = "offline" then
@@ -205,7 +205,78 @@ let User (mailbox: Actor<_>) =
 
             | "SearchOutput" -> Console.WriteLine(message)
 
+            | "Run" -> if status = "online" then
+                            let rnd = Constants.Constants.actions.[random.Next(Constants.Constants.actions.Length)]
+                            Console.WriteLine("Action selected: " + rnd)
+                            match rnd with 
+                            | "tweetAction" ->  let guid = Guid.NewGuid()
+                                                let apiComm = {
+                                                    reqId = guid.ToString()
+                                                    userId = id |> string
+                                                    content = ""
+                                                    query = "Tweet"
+                                                }
+                                                userMessage apiComm id
+                                        
+                            | "searchAction" ->     let guid = Guid.NewGuid()
+                                                    let apiComm = {
+                                                        reqId = guid.ToString()
+                                                        userId = id |> string
+                                                        content = ""
+                                                        query = "Search"
+                                                    }
+                                                    userMessage apiComm id
+
+                            | "retweetAction" ->    let guid = Guid.NewGuid()
+                                                    let apiComm = {
+                                                        reqId = guid.ToString()
+                                                        userId = id |> string
+                                                        content = ""
+                                                        query = "Retweet"
+                                                    }
+                                                    userMessage apiComm id
+
+                            | "subscribeAction" ->  let guid = Guid.NewGuid()
+                                                    let apiComm = {
+                                                        reqId = guid.ToString()
+                                                        userId = id |> string
+                                                        content = ""
+                                                        query = "Subscribe"
+                                                    }
+                                                    userMessage apiComm id 
+
+                            | "disconnectAction" ->     let guid = Guid.NewGuid()
+                                                        let apiComm = {
+                                                            reqId = guid.ToString()
+                                                            userId = id |> string
+                                                            content = ""
+                                                            query = "Logout"
+                                                        }
+                                                        userMessage apiComm id 
+
+                            | "connectAction" ->    let guid = Guid.NewGuid()
+                                                    let apiComm = {
+                                                        reqId = guid.ToString()
+                                                        userId = id |> string
+                                                        content = ""
+                                                        query = "Connect"
+                                                    }
+                                                    userMessage apiComm id 
+
+                            | _ -> ignore()
+
+                            let guid = Guid.NewGuid()
+                            let apiComm = {
+                                            reqId = guid.ToString()
+                                            userId = id |> string
+                                            content = ""
+                                            query = "Run"
+                                            }
+                            userMessage apiComm id
+
             | "Logout" -> status <- "offline"
+
+            | "Connect" -> status <- "online"
             // | "Tweet" -> 
             | _ -> ignore()
 
@@ -228,18 +299,22 @@ let Supervisor (numNodes: int) (tweets: int) (mailbox: Actor<_>) =
                 let guid = Guid.NewGuid()
                 let payload = {
                     reqId = guid.ToString() 
-                    userId = "" 
+                    userId = "Supervisor" 
                     content = "" 
-                    query = "Tweet"
+                    query = "Register"
                 }
 
                 nodesList |> List.iter (fun node -> node <! Json.serialize payload)
-                // for j in nodesList do
-                //     j <! (Json.serialize payload)
-                // Console.WriteLine(payload)
-                // Console.WriteLine("Hello")
 
-            // | _ -> ignore ()
+                let payload2 = {
+                    reqId = guid.ToString() 
+                    userId = "Supervisor" 
+                    content = "" 
+                    query = "Run"
+                }
+                
+                nodesList |> List.iter (fun node -> system.Scheduler.ScheduleTellOnce(TimeSpan.FromSeconds(2.0),node , Json.serialize(payload2)))
+                
 
             return! loop ()
         }
