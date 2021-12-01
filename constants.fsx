@@ -37,3 +37,12 @@ module Constants =
         "teamwork";
         "Covid"
     ]
+
+    let actions = [
+        "tweetAction";
+        "searchAction";
+        "retweetAction";
+        "subscribeAction";
+        "disconnectAction";
+        "connectAction"
+    ]
