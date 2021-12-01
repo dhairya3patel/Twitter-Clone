@@ -80,7 +80,7 @@ let engineMessage msg=
 //     str
 
 type apiComm = {
-    // reqId: String
+    reqId: String
     userId: String
     content: String
     query: String
@@ -113,9 +113,10 @@ let User (mailbox: Actor<_>) =
 
             if timer.Elapsed.TotalSeconds - timerState > 1.0 && status = "offline" then
 
+                let guid = Guid.NewGuid()
                 let payload = {
 
-                    // reqId = "1234"
+                    reqId = guid.ToString()
                     userId = id |> string
                     content = ""
                     query = "Login"
@@ -127,9 +128,9 @@ let User (mailbox: Actor<_>) =
                 timerState <- timer.Elapsed.TotalSeconds
             
             match action with
-            | "Login" ->    //let Guid = Guid.NewGuid()
+            | "Login" ->    let guid = Guid.NewGuid()
                             let apiComm = {
-                                // reqId = Guid.ToString()
+                                reqId = guid.ToString()
                                 userId = id |> string
                                 content = ""
                                 query = "Login"
@@ -138,9 +139,9 @@ let User (mailbox: Actor<_>) =
                             // Console.WriteLine(apiComm)
 
             | "Register" -> Console.WriteLine(id.ToString() + " has been registered")
-                            //let Guid = Guid.NewGuid()
+                            let guid = Guid.NewGuid()
                             let apiComm = {
-                                // reqId = Guid.ToString()
+                                reqId = guid.ToString()
                                 userId = id |> string
                                 content = ""
                                 query = "SignUp"
@@ -148,9 +149,9 @@ let User (mailbox: Actor<_>) =
                             engineMessage apiComm
                             // Console.WriteLine(apiComm)
 
-            | "Subscribe" -> //let Guid = Guid.NewGuid()
+            | "Subscribe" -> let guid = Guid.NewGuid()
                              let apiComm = {
-                                // reqId = Guid.ToString()
+                                reqId = guid.ToString()
                                 userId = id |> string
                                 content = ""
                                 query = "Subscribe"
@@ -173,9 +174,9 @@ let User (mailbox: Actor<_>) =
                             Console.WriteLine("User " + id.ToString() + " tweeted " + liveTweet)
                             myTweets <- List.append myTweets [liveTweet]
                             myTweetsCount <- myTweetsCount + 1
-                            //let Guid = Guid.NewGuid()
+                            let guid = Guid.NewGuid()
                             let apiComm = {
-                                // reqId = Guid.ToString()
+                                reqId = guid.ToString()
                                 userId = id |> string
                                 content = liveTweet
                                 query = "Tweet"
@@ -183,9 +184,9 @@ let User (mailbox: Actor<_>) =
                             engineMessage apiComm
 
             
-            | "Retweet" ->  //let Guid = Guid.NewGuid()
+            | "Retweet" ->  let guid = Guid.NewGuid()
                             let apiComm = {
-                                // reqId = Guid.ToString()
+                                reqId = guid.ToString()
                                 userId = id |> string
                                 content = ""
                                 query = "Retweet"
@@ -213,9 +214,9 @@ let Supervisor (numNodes: int) (tweets: int) (mailbox: Actor<_>) =
             | Initiate(_) -> 
                 nodesList <- [ for i in 1 .. currentNodes do yield (spawn system ("User_" + string (i))) User ]
                 Console.WriteLine(nodesList.ToString())
-                // let Guid = Guid.NewGuid()
+                let guid = Guid.NewGuid()
                 let payload = {
-                    // reqId = Guid.ToString() 
+                    reqId = guid.ToString() 
                     userId = "" 
                     content = "" 
                     query = "Tweet"
