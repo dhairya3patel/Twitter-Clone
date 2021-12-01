@@ -14,33 +14,41 @@ open System.Text
 open FSharp.Json
 // open Constants.Constants
 
-// let configuration =
-//     ConfigurationFactory.ParseString(
-//         @"akka {
-//             actor {
-//                 provider = ""Akka.Remote.RemoteActorRefProvider, Akka.Remote""
-//                 debug : {
-//                     receive : on
-//                     autoreceive : on
-//                     lifecycle : on
-//                     event-stream : on
-//                     unhandled : on
-//                 }
-//             }
-//             remote {
-//                 helios.tcp {
-//                     port = 9090
-//                     hostname = 10.20.115.11
-//                 }
-//             }
-//         }"
-//     )
+let configuration =
+    ConfigurationFactory.ParseString(
+        @"akka {
+            actor {
+                provider = ""Akka.Remote.RemoteActorRefProvider, Akka.Remote""
+                debug : {
+                    receive : on
+                    autoreceive : on
+                    lifecycle : on
+                    event-stream : on
+                    unhandled : on
+                }
+            }
+            remote {
+                helios.tcp {
+                    port = 9090
+                    hostname = 10.20.115.11
+                }
+            }
+        }"
+    )
 
 let config = 
     ConfigurationFactory.ParseString(
-        @"akka {            
-            log-dead-letters = 0
-            log-dead-letters-during-shutdown = off
+        @"akka {
+            actor {
+                provider = ""Akka.Remote.RemoteActorRefProvider, Akka.Remote""
+                
+            }
+            remote {
+                helios.tcp {
+                    port = 9092
+                    hostname = 127.0.0.1
+                }
+            }
         }")
     
 let system = ActorSystem.Create("TwitterClone",config)
@@ -51,25 +59,25 @@ let tweets = fsi.CommandLineArgs.[2] |> int
 let random = System.Random()
 
 let userMessage msg userid= 
-    let selectedUser = select ("akka.tcp://TwitterClone@127.0.0.1:9002/user/User_" + (userid |> string)) system
+    let selectedUser = select ("akka.tcp://TwitterClone@127.0.0.1:9092/user/User_" + (userid |> string)) system
     let message = Json.serialize(msg)
     selectedUser <! message
 
 let engineMessage msg= 
-    let engineActor = select ("akka.tcp://TwitterClone@127.0.0.1:9001/user/engine") system
+    let engineActor = select ("akka.tcp://TwitterClone@127.0.0.1:9091/user/Server") system
     let message = Json.serialize(msg)
     engineActor <! message
 
-let constructTweet = 
-    let mutable str = String.Empty
-    let tweetCount = Constants.Constants.tweets
-    let hashCount = Constants.Constants.hashtags
-    let rnd1 = random.Next(tweetCount.Length)
-    let rnd2 = random.Next(hashCount.Length)
-    str <- tweetCount.[rnd1]
-    str <- str + " " + hashCount.[rnd2]
-    str <- str + " @User_" + (random.Next(numNodes-1) |> string)
-    str
+// let constructTweet = 
+//     let mutable str = String.Empty
+//     let tweetCount = Constants.Constants.tweets
+//     let hashCount = Constants.Constants.hashtags
+//     let rnd1 = random.Next(tweetCount.Length)
+//     let rnd2 = random.Next(hashCount.Length)
+//     str <- tweetCount.[rnd1]
+//     str <- str + " " + hashCount.[rnd2]
+//     str <- str + " @User_" + (random.Next(numNodes-1) |> string)
+//     str
 
 type apiComm = {
     // reqId: String
@@ -129,7 +137,7 @@ let User (mailbox: Actor<_>) =
                             engineMessage apiComm
                             // Console.WriteLine(apiComm)
 
-            | "Register" -> Console.WriteLine("%s has been registered", id)
+            | "Register" -> Console.WriteLine(id.ToString() + " has been registered")
                             //let Guid = Guid.NewGuid()
                             let apiComm = {
                                 // reqId = Guid.ToString()
@@ -150,8 +158,19 @@ let User (mailbox: Actor<_>) =
                              engineMessage apiComm
                             // Console.WriteLine(apiComm)
 
-            | "Tweet" ->    let liveTweet = constructTweet
-                            Console.WriteLine("User %s tweeted %s", id.ToString liveTweet)
+            | "Tweet" ->    let constructTweet = 
+                                let mutable str = String.Empty
+                                let tweetCount = Constants.Constants.tweets
+                                let hashCount = Constants.Constants.hashtags
+                                let rnd1 = random.Next(tweetCount.Length)
+                                let rnd2 = random.Next(hashCount.Length)
+                                str <- tweetCount.[rnd1]
+                                str <- str + " " + hashCount.[rnd2]
+                                str <- str + " @User_" + (random.Next(numNodes-1) |> string)
+                                str
+            
+                            let liveTweet = constructTweet
+                            Console.WriteLine("User " + id.ToString() + " tweeted " + liveTweet)
                             myTweets <- List.append myTweets [liveTweet]
                             myTweetsCount <- myTweetsCount + 1
                             //let Guid = Guid.NewGuid()
@@ -199,7 +218,7 @@ let Supervisor (numNodes: int) (tweets: int) (mailbox: Actor<_>) =
                     // reqId = Guid.ToString() 
                     userId = "" 
                     content = "" 
-                    query = "Register"
+                    query = "Tweet"
                 }
 
                 nodesList |> List.iter (fun node -> node <! Json.serialize payload)
