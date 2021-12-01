@@ -73,8 +73,9 @@ let User (userid: int) (mailbox: Actor<_>) =
             
             match action with
             | "Register" -> Console.WriteLine("%s has been registered", userid)
+                            Guid obj = Guid.NewGuid()
                             let apiComm = {
-                                reqId = ""
+                                reqId = obj.ToString()
                                 userId = userid |> string
                                 content = ""
                                 query = "SignUp"
@@ -82,19 +83,19 @@ let User (userid: int) (mailbox: Actor<_>) =
                             engineMessage apiComm
                             Console.WriteLine(apiComm)
 
-            | "Subscribe" -> 
-                            let apiComm = {
-                                reqId = ""
+            | "Subscribe" -> Guid obj = Guid.NewGuid()
+                             let apiComm = {
+                                reqId = obj.ToString()
                                 userId = userid |> string
                                 content = ""
                                 query = "Subscribe"
-                            }
-                            engineMessage apiComm
+                                }
+                             engineMessage apiComm
                             // Console.WriteLine(apiComm)
             
-            | "Retweet" -> 
+            | "Retweet" ->  Guid obj = Guid.NewGuid()
                             let apiComm = {
-                                reqId = ""
+                                reqId = obj.ToString()
                                 userId = userid |> string
                                 content = ""
                                 query = "Retweet"
@@ -104,7 +105,7 @@ let User (userid: int) (mailbox: Actor<_>) =
 
             // | "Tweet" -> 
             | _ -> ignore
-            
+
             return! loop ()
         }
         loop()
