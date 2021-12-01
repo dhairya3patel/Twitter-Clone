@@ -52,6 +52,9 @@ let config =
         }")
     
 let system = ActorSystem.Create("TwitterClone",config)
+let currentTime = Diagnostics.Stopwatch()
+
+let mutable globalTweets = []
 
 let mutable numNodes = fsi.CommandLineArgs.[1] |> int
 let tweets = fsi.CommandLineArgs.[2] |> int
@@ -66,7 +69,7 @@ let userMessage msg userid=
 
 
 let engineMessage msg= 
-    let engineActor = select ("akka.tcp://TwitterClone@127.0.0.1:9091/user/Server") system
+    let engineActor = select ("akka.tcp://TwitterClone@10.25.115.7:9091/user/Server") system
     let message = Json.serialize(msg)
     engineActor <! message
 
@@ -97,7 +100,7 @@ type Communication =
 let User (mailbox: Actor<_>) = 
     // let id = userid
     let mutable reqList = []
-    let awayTweets = []
+    let mutable awayTweets = []
     let mutable myTweets = []
     let mutable myTweetsCount = 0
     let timer = Diagnostics.Stopwatch()
@@ -178,6 +181,7 @@ let User (mailbox: Actor<_>) =
                     let liveTweet = constructTweet
                     Console.WriteLine("User " + id.ToString() + " tweeted " + liveTweet)
                     myTweets <- List.append myTweets [liveTweet]
+                    globalTweets <- List.append globalTweets [liveTweet]
                     myTweetsCount <- myTweetsCount + 1
                     let guid = Guid.NewGuid()
                     let apiComm = {
@@ -190,12 +194,13 @@ let User (mailbox: Actor<_>) =
                 else
                     supervisorRef <! Done("Done")
 
-            
-            | "Retweet" ->  let guid = Guid.NewGuid()
+                
+            | "Retweet" ->  let randomTweet = globalTweets.[random.Next(globalTweets.Length)]
+                            let guid = Guid.NewGuid()
                             let apiComm = {
                                 reqId = guid.ToString()
-                                userId = userId
-                                content = ""
+                                userId = id |> string
+                                content = randomTweet |> string
                                 query = "Retweet"
                             }
                             engineMessage apiComm
