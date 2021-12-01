@@ -46,7 +46,7 @@ type apiComm = {
 let system = ActorSystem.Create("TwitterClone", config)
 
 let serverMessage payload = 
-    let server = select ("akka.tcp://TwitterClone@127.0.0.1:9002/user/Server") system
+    let server = select ("akka.tcp://TwitterClone@127.0.0.1:9091/user/Server") system
 
     let request = Json.serialize payload
 
@@ -209,6 +209,7 @@ let serverActor (mailbox: Actor<_>) =
                             hashTable.[hashtag] <- List.append hashTable.[hashtag] [tweet]
                         else
                             hashTable.Add(hashtag,[tweet])
+                        appLog ("HashTag " + hashtag + " " + hashTable.[hashtag].ToString())
 
                     let mentions = filterSpecial MENTION tweet
 
@@ -314,7 +315,7 @@ let serverActor (mailbox: Actor<_>) =
 
     loop ()
 
-let server = spawn system "server" serverActor
+let server = spawn system "Server" serverActor
 // let mutable guid = Guid.NewGuid()
 // let mutable payload = {
 //     reqId = guid.ToString()
