@@ -192,7 +192,18 @@ let User (mailbox: Actor<_>) =
                                 query = "Retweet"
                             }
                             engineMessage apiComm
+
+            | "Search" ->   let guid = Guid.NewGuid()
+                            let apiComm = {
+                                reqId = guid.ToString()
+                                userId = id |> string
+                                content = Constants.Constants.hashtags.[random.Next(Constants.Constants.hashtags.Length)]
+                                query = "Search"
+                            }
+                            engineMessage apiComm
                             // Console.WriteLine(apiComm)
+
+            | "SearchOutput" -> Console.WriteLine(message)
 
             | "Logout" -> status <- "offline"
             // | "Tweet" -> 
