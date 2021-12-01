@@ -203,7 +203,7 @@ let User (mailbox: Actor<_>) =
                             engineMessage apiComm
                             // Console.WriteLine(apiComm)
 
-            | "SearchOutput" -> Console.WriteLine(message)
+            | "SearchResults" -> Console.WriteLine("User " + id.ToString() + "SearchResults: " + message.content.ToString())
 
             | "Run" -> if status = "online" then
                             let rnd = Constants.Constants.actions.[random.Next(Constants.Constants.actions.Length)]
