@@ -4,6 +4,7 @@
 #load "./constants.fsx"
 
 open System
+open System.Text
 open Akka.Actor
 open Akka.FSharp
 open Akka.Configuration
@@ -61,6 +62,13 @@ let constructTweet =
     str <- str + " @User_" + (random.Next(numNodes-1) |> string)
     str
 
+type apiComm = {
+    reqId: String
+    userId: String
+    content: String
+    query: String
+}
+
 
 let User (userid: int) (mailbox: Actor<_>) = 
     let id = userid
@@ -68,14 +76,13 @@ let User (userid: int) (mailbox: Actor<_>) =
         actor {
             let! jsonMessage = mailbox.Receive()
             let message = Json.deserialize jsonMessage
-
             let action = message.query
             
             match action with
             | "Register" -> Console.WriteLine("%s has been registered", userid)
-                            Guid obj = Guid.NewGuid()
+                            let Guid = Guid.NewGuid()
                             let apiComm = {
-                                reqId = obj.ToString()
+                                reqId = Guid.ToString()
                                 userId = userid |> string
                                 content = ""
                                 query = "SignUp"
@@ -83,9 +90,9 @@ let User (userid: int) (mailbox: Actor<_>) =
                             engineMessage apiComm
                             Console.WriteLine(apiComm)
 
-            | "Subscribe" -> Guid obj = Guid.NewGuid()
+            | "Subscribe" -> let Guid = Guid.NewGuid()
                              let apiComm = {
-                                reqId = obj.ToString()
+                                reqId = Guid.ToString()
                                 userId = userid |> string
                                 content = ""
                                 query = "Subscribe"
@@ -93,9 +100,9 @@ let User (userid: int) (mailbox: Actor<_>) =
                              engineMessage apiComm
                             // Console.WriteLine(apiComm)
             
-            | "Retweet" ->  Guid obj = Guid.NewGuid()
+            | "Retweet" ->  let Guid = Guid.NewGuid()
                             let apiComm = {
-                                reqId = obj.ToString()
+                                reqId = Guid.ToString()
                                 userId = userid |> string
                                 content = ""
                                 query = "Retweet"
@@ -104,11 +111,11 @@ let User (userid: int) (mailbox: Actor<_>) =
                             // Console.WriteLine(apiComm)
 
             // | "Tweet" -> 
-            | _ -> ignore
+            | _ -> ignore()
 
             return! loop ()
         }
-        loop()
+    loop()
 
 let Supervisor (numNodes: int) (tweets: int) (mailbox: Actor<_>) = 
     let currentNodes = numNodes
@@ -136,4 +143,4 @@ let Supervisor (numNodes: int) (tweets: int) (mailbox: Actor<_>) =
 
             return! loop ()
         }
-        loop()
+    loop()
