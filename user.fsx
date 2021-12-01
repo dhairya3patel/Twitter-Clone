@@ -31,18 +31,33 @@ let configuration =
         }"
     )
 
-let system = System.create "twitter_sim" configuration
+let system = ActorSystem.Create( "twitter_sim",configuration)
 
 let mutable numNodes = fsi.CommandLineArgs.[1] |> int
 let tweets = fsi.CommandLineArgs.[2] |> int
 
+let userMessage msg userid= 
+    let selectedUser = select ("akka.tcp://TwitterClone@127.0.0.1:9002/user/User_" + (userid |> string)) system
+    let message = Json.serialize(msg)
+    selectedUser <! message
+
+let engineMessage msg= 
+    let engineActor = select ("akka.tcp://TwitterClone@127.0.0.1:9001/user/engine") system
+    let message = Json.serialize(msg)
+    engineActor <! message
+
+
 let User (userid: int) (mailbox: Actor<_>) = 
+    let id = userid
     let rec loop () =
         actor {
-            let! message = mailbox.Receive()
+            let! jsonMessage = mailbox.Receive()
+            let message = Json.deserialize jsonMessage
 
-            match message with
+            let action = message.query
             
+            match action with
+            | "Register" -> Console.WriteLine("%s has been registered", userid)
 
             return! loop ()
         }
