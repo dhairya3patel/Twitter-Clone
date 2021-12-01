@@ -11,6 +11,7 @@ open System.Security.Cryptography
 open System.Text
 open FSharp.Json
 open System.Collections.Generic
+open System.IO
 
 
 let numTweets = fsi.CommandLineArgs.[1] |> int
@@ -72,6 +73,30 @@ let filterSpecial (item: char) (tweet: string) =
                     list <- List.append list [temp.[i + 1..]]
     list
 
+let path = @"C:\Users\dhair\OneDrive\Desktop\UF\Sem 1\COP 5615- DOSP\F sharp\Project4\serverLogs.txt"
+let getLogFile =
+    if not (File.Exists(path)) then
+        use logger = File.CreateText(path)
+        logger.WriteLine("Server Logs");
+        logger.Close()
+
+let getTimeStamp = 
+    let zone = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time")
+    let utc = DateTime.UtcNow
+    let timeStamp = TimeZoneInfo.ConvertTimeFromUtc(utc, zone);
+    timeStamp.ToString("MMM-dd-yyyy HH:mm:ss tt")
+
+let log (message:apiComm)= 
+
+    let logger = File.AppendText(path)
+    let time = getTimeStamp
+    logger.WriteLine ("[" + time + "]: " + "RequestId: " + message.reqId)
+    logger.WriteLine ("[" + time + "]: " + "UserId: " + message.userId)
+    logger.WriteLine ("[" + time + "]: " + "Query: " + message.query)
+    if message.content <> "" then
+        logger.WriteLine ("[" + time + "]: " + "Content: " + message.content)
+    logger.Close()
+
 
 let serverActor (mailbox: Actor<_>) =
 
@@ -80,7 +105,7 @@ let serverActor (mailbox: Actor<_>) =
     let userTweetTable = new Dictionary<string, list<String>>()
     let mutable allTweets = List.Empty
     let tweetTable = new Dictionary<string, list<String>>()
-    let retweetTable = new Dictionary<string, list<String>>()
+    let offlineTable = new Dictionary<string, list<String>>()
     let followers = new Dictionary<string, list<String>>()
     let following = new Dictionary<string, list<String>>()
     let hashTable = new Dictionary<string, list<String>>()
@@ -129,6 +154,8 @@ let serverActor (mailbox: Actor<_>) =
             output.Add("users",userOutput)
         output
 
+    getLogFile
+
     let rec loop () =
 
         actor {
@@ -139,9 +166,11 @@ let serverActor (mailbox: Actor<_>) =
 
             let requestId = message.reqId
 
+            log message
+
             if not (List.contains requestId reqList) then
 
-                List.append reqList [requestId] |> ignore
+                reqList <- List.append reqList [requestId]
 
                 let userId = message.userId
 
@@ -161,6 +190,8 @@ let serverActor (mailbox: Actor<_>) =
                     else
                         tweetTable.Add(userId,[tweet])
 
+                    Console.WriteLine tweetTable    
+
                     allTweets <-List.append allTweets [tweet]    
 
                     if count >= numTweets then
@@ -178,22 +209,28 @@ let serverActor (mailbox: Actor<_>) =
 
                     for mention in mentions do
                         if mentionTable.ContainsKey mention then
-                            mentionTable.[mention] <- List.append hashTable.[mention] [tweet]
+                            mentionTable.[mention] <- List.append mentionTable.[mention] [tweet]
                         else
-                            mentionTable.Add(mention,[tweet])                    
+                            mentionTable.Add(mention,[tweet])
 
-                    for follower in followers.[userId] do
-                        if isOnline follower then
-                            let payload = {
-                                reqId = "1234"
-                                userId = "Server"
-                                content = userId + " Tweeted " + tweet
-                                query  = "LiveFeed"
-                            }
+                    if followers.ContainsKey userId then
+                        for follower in followers.[userId] do
+                            if isOnline follower then
+                                let guid = Guid.NewGuid()
+                                let payload = {
+                                    reqId = guid.ToString()
+                                    userId = "Server"
+                                    content = userId + " Tweeted " + tweet
+                                    query  = "LiveFeed"
+                                }
 
-                            let subId = follower.ToString().Split("_").[1]
-                            userMessage payload subId
-                      //  else
+                                let subId = follower.ToString().Split("_").[1]
+                                userMessage payload subId
+                            else
+                                if offlineTable.ContainsKey follower then
+                                    offlineTable.[follower] <- List.append offlineTable.[follower] [tweet]
+                                else
+                                    offlineTable.Add(follower,[tweet])
 
                 | "Retweet" ->
 
@@ -206,8 +243,9 @@ let serverActor (mailbox: Actor<_>) =
                             let res = tweetTable.[keys.[index]] |> List.find(fun(x) -> x = tweet)  
                             tempBreak <- true
                             let destUser = keys.[index]
+                            let guid = Guid.NewGuid()
                             let payload = {
-                                reqId = "1234"
+                                reqId = guid.ToString()
                                 userId = "Server"
                                 content = userId + " Re - tweeted your tweet " + res 
                                 query  = "ReTweetNotif"
@@ -233,8 +271,9 @@ let serverActor (mailbox: Actor<_>) =
 
                     let searchOutput = Json.serialize (searchResults query)
 
+                    let guid = Guid.NewGuid()
                     let payload = {
-                        reqId = "1234"
+                        reqId = guid.ToString()
                         userId = "Server"
                         content = searchOutput
                         query = "SearchResults"
@@ -245,6 +284,16 @@ let serverActor (mailbox: Actor<_>) =
                 | "Login" ->
 
                     dcList <- dcList |> List.filter(fun(x) -> x <> userId)
+                    if offlineTable.ContainsKey userId && offlineTable.[userId] <> List.Empty then
+                        let guid = Guid.NewGuid()
+                        let payload = {
+                            reqId = guid.ToString()
+                            userId = "Server"
+                            content = Json.serialize offlineTable.[userId]
+                            query = "UpdateFeed"
+                        }
+                        offlineTable.[userId] <- List.Empty
+                        userMessage payload userId
                     
                 | "Logout" ->
 
@@ -261,7 +310,28 @@ let serverActor (mailbox: Actor<_>) =
     loop ()
 
 let server = spawn system "server" serverActor
+// let mutable guid = Guid.NewGuid()
+// let mutable payload = {
+//     reqId = guid.ToString()
+//     userId = "User_1"
+//     content = ""
+//     query = "SignUp"
+// }
+// server <! Json.serialize payload
+// guid <- Guid.NewGuid()
+// payload <- {
+//     reqId = guid.ToString()
+//     userId = "User_1"
+//     content = "This is my first Tweet#tweet1"
+//     query = "Tweet"
+// }
 
+// system.Scheduler.ScheduleTellOnce(
+//     TimeSpan.FromSeconds(3.0),
+//     server,
+//     Json.serialize payload
+// )
+// server <! Json.serialize payload
 while terminate = false do 
    1 |> ignore
 
