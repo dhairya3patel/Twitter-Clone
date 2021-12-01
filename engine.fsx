@@ -31,7 +31,7 @@ let config =
             remote {
                 helios.tcp {
                     port = 9091
-                    hostname = 127.0.0.1
+                    hostname = 10.20.115.7
                 }
             }
         }")
@@ -81,10 +81,10 @@ let getLogFile =
         logger.Close()
 
 let getTimeStamp = 
-    let zone = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time")
+    // let zone = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time")
     let utc = DateTime.UtcNow
-    let timeStamp = TimeZoneInfo.ConvertTimeFromUtc(utc, zone);
-    timeStamp.ToString("MMM-dd-yyyy HH:mm:ss tt")
+    // let timeStamp = TimeZoneInfo.ConvertTimeFromUtc(utc, zone);
+    utc.ToString("MMM-dd-yyyy HH:mm:ss tt")
 
 let logRequest (message:apiComm)= 
 

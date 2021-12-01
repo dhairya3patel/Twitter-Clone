@@ -24,10 +24,8 @@ module Constants =
 
     let tweets = [
         "teamwork makes the dream work";
-        "Ohmmmmmmyyyyyyyyggghghhhhhhhgggggggggdhdhsjsixudbslsogbdsisgshdbxidjdbdidhdifjfiri
-        #GRAMMYs
-        #BTS";
-        "Hello; I'm a Tweet.";
+        "Ohmmmmmmy Goddd its the Grammys";
+        "Hello! I'm a Tweet.";
         "We're all here together!";
         "Isn't Twitter so much fun";
         "Covid is back"
