@@ -58,6 +58,17 @@ let User (userid: int) (mailbox: Actor<_>) =
             
             match action with
             | "Register" -> Console.WriteLine("%s has been registered", userid)
+                            let apiComm = {
+                                reqId = ""
+                                userId = userid
+                                content = ""
+                                query = "SignUp"
+                            }
+                            engineMessage apiComm
+                            Console.WriteLine(apiComm)
+
+
+            | "Tweet" -> 
 
             return! loop ()
         }
