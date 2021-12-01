@@ -77,7 +77,7 @@ let path = @"C:\Users\dhair\OneDrive\Desktop\UF\Sem 1\COP 5615- DOSP\F sharp\Pro
 let getLogFile =
     if not (File.Exists(path)) then
         use logger = File.CreateText(path)
-        logger.WriteLine("Server Logs");
+        // logger.WriteLine("Server Logs");
         logger.Close()
 
 let getTimeStamp = 
@@ -219,6 +219,15 @@ let serverActor (mailbox: Actor<_>) =
                             mentionTable.[mention] <- List.append mentionTable.[mention] [tweet]
                         else
                             mentionTable.Add(mention,[tweet])
+                        let guid = Guid.NewGuid()
+                        let payload = {
+                            reqId = guid.ToString()
+                            userId = "Server"
+                            content = userId + " mentioned you in " + tweet
+                            query  = "LiveFeed"
+                        }
+                        let menId = mention.ToString().Split("_").[1]
+                        userMessage payload menId
 
                     if followers.ContainsKey userId then
                         for follower in followers.[userId] do

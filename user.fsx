@@ -63,6 +63,8 @@ let userMessage msg userid=
     let message = Json.serialize(msg)
     selectedUser <! message
 
+
+
 let engineMessage msg= 
     let engineActor = select ("akka.tcp://TwitterClone@127.0.0.1:9091/user/Server") system
     let message = Json.serialize(msg)
@@ -101,6 +103,7 @@ let User (mailbox: Actor<_>) =
     let mutable timerState = 0.0
     let mutable supervisorRef = mailbox.Self
     let id = mailbox.Self.Path.Name.Split("_").[1] |> int
+    let userId = mailbox.Self.Path.Name
     let mutable status = "online"
 
     let rec loop () =
@@ -117,7 +120,7 @@ let User (mailbox: Actor<_>) =
                 let payload = {
 
                     reqId = guid.ToString()
-                    userId = id |> string
+                    userId = userId
                     content = ""
                     query = "Login"
 
@@ -131,7 +134,7 @@ let User (mailbox: Actor<_>) =
             | "Login" ->    let guid = Guid.NewGuid()
                             let apiComm = {
                                 reqId = guid.ToString()
-                                userId = id |> string
+                                userId = userId
                                 content = ""
                                 query = "Login"
                             }
@@ -142,7 +145,7 @@ let User (mailbox: Actor<_>) =
                             let guid = Guid.NewGuid()
                             let apiComm = {
                                 reqId = guid.ToString()
-                                userId = id |> string
+                                userId = userId
                                 content = ""
                                 query = "SignUp"
                             }
@@ -152,7 +155,7 @@ let User (mailbox: Actor<_>) =
             | "Subscribe" -> let guid = Guid.NewGuid()
                              let apiComm = {
                                 reqId = guid.ToString()
-                                userId = id |> string
+                                userId = userId
                                 content = ""
                                 query = "Subscribe"
                                 }
@@ -177,7 +180,7 @@ let User (mailbox: Actor<_>) =
                             let guid = Guid.NewGuid()
                             let apiComm = {
                                 reqId = guid.ToString()
-                                userId = id |> string
+                                userId = userId
                                 content = liveTweet
                                 query = "Tweet"
                                 }
@@ -187,7 +190,7 @@ let User (mailbox: Actor<_>) =
             | "Retweet" ->  let guid = Guid.NewGuid()
                             let apiComm = {
                                 reqId = guid.ToString()
-                                userId = id |> string
+                                userId = userId
                                 content = ""
                                 query = "Retweet"
                             }
@@ -196,14 +199,18 @@ let User (mailbox: Actor<_>) =
             | "Search" ->   let guid = Guid.NewGuid()
                             let apiComm = {
                                 reqId = guid.ToString()
-                                userId = id |> string
-                                content = Constants.Constants.hashtags.[random.Next(Constants.Constants.hashtags.Length)]
+                                userId = userId
+                                content = Constants.Constants.hashtags.[random.Next(Constants.Constants.hashtags.Length)].[1..]
                                 query = "Search"
                             }
                             engineMessage apiComm
                             // Console.WriteLine(apiComm)
 
-            | "SearchResults" -> Console.WriteLine("User " + id.ToString() + "SearchResults: " + message.content.ToString())
+            | "SearchResults" -> Console.WriteLine("User " + id.ToString() + " SearchResults: " + message.content.ToString())
+
+            | "LiveFeed" -> Console.WriteLine ("User " + id.ToString() + ": " + message.content.ToString())
+
+            | "UpdateFeed" -> Console.WriteLine ("User " + id.ToString() + ": " + message.content.ToString())
 
             | "Run" -> if status = "online" then
                             let rnd = Constants.Constants.actions.[random.Next(Constants.Constants.actions.Length)]
@@ -212,7 +219,7 @@ let User (mailbox: Actor<_>) =
                             | "tweetAction" ->  let guid = Guid.NewGuid()
                                                 let apiComm = {
                                                     reqId = guid.ToString()
-                                                    userId = id |> string
+                                                    userId = userId
                                                     content = ""
                                                     query = "Tweet"
                                                 }
@@ -221,7 +228,7 @@ let User (mailbox: Actor<_>) =
                             | "searchAction" ->     let guid = Guid.NewGuid()
                                                     let apiComm = {
                                                         reqId = guid.ToString()
-                                                        userId = id |> string
+                                                        userId = userId
                                                         content = ""
                                                         query = "Search"
                                                     }
@@ -230,7 +237,7 @@ let User (mailbox: Actor<_>) =
                             | "retweetAction" ->    let guid = Guid.NewGuid()
                                                     let apiComm = {
                                                         reqId = guid.ToString()
-                                                        userId = id |> string
+                                                        userId = userId
                                                         content = ""
                                                         query = "Retweet"
                                                     }
@@ -239,7 +246,7 @@ let User (mailbox: Actor<_>) =
                             | "subscribeAction" ->  let guid = Guid.NewGuid()
                                                     let apiComm = {
                                                         reqId = guid.ToString()
-                                                        userId = id |> string
+                                                        userId = userId
                                                         content = ""
                                                         query = "Subscribe"
                                                     }
@@ -248,7 +255,7 @@ let User (mailbox: Actor<_>) =
                             | "disconnectAction" ->     let guid = Guid.NewGuid()
                                                         let apiComm = {
                                                             reqId = guid.ToString()
-                                                            userId = id |> string
+                                                            userId = userId
                                                             content = ""
                                                             query = "Logout"
                                                         }
@@ -257,28 +264,43 @@ let User (mailbox: Actor<_>) =
                             | "connectAction" ->    let guid = Guid.NewGuid()
                                                     let apiComm = {
                                                         reqId = guid.ToString()
-                                                        userId = id |> string
+                                                        userId = userId
                                                         content = ""
-                                                        query = "Connect"
+                                                        query = "Login"
                                                     }
                                                     userMessage apiComm id 
 
                             | _ -> ignore()
 
-                            let guid = Guid.NewGuid()
-                            let apiComm = {
-                                            reqId = guid.ToString()
-                                            userId = id |> string
-                                            content = ""
-                                            query = "Run"
-                                            }
-                            userMessage apiComm id
+                            // let guid = Guid.NewGuid()
+                            // let apiComm = {
+                            //                 reqId = guid.ToString()
+                            //                 userId = userId
+                            //                 content = ""
+                            //                 query = "Run"
+                            //                 }
+                            // userMessage apiComm id
 
             | "Logout" -> status <- "offline"
 
             | "Connect" -> status <- "online"
             // | "Tweet" -> 
             | _ -> ignore()
+
+            if myTweetsCount < tweets then
+                let guid = Guid.NewGuid()
+                let apiComm = {
+                                reqId = guid.ToString()
+                                userId = userId
+                                content = ""
+                                query = "Run"
+                                }
+                let mutable counter = 0
+                while counter < 10 do
+                    counter <- counter + 1
+                userMessage apiComm id
+            else
+                Console.WriteLine ("User " + id.ToString() + " Tweet count " + myTweetsCount.ToString())
 
             return! loop ()
         }
