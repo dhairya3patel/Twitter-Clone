@@ -1,7 +1,8 @@
 #r "nuget: Akka.FSharp"
 #r "nuget: Akka.Remote"
 #r "nuget: FSharp.Json"
-#load "./constants.fsx"
+// #r "nuget: FSharp.Core, 6.0.1"
+#load "./Constants.fsx"
 
 open System
 open System.Text
@@ -10,31 +11,38 @@ open Akka.FSharp
 open Akka.Configuration
 open System.Text
 open FSharp.Json
-open Constants.Constants
+// open Constants.Constants
 
-let configuration =
+// let configuration =
+//     ConfigurationFactory.ParseString(
+//         @"akka {
+//             actor {
+//                 provider = ""Akka.Remote.RemoteActorRefProvider, Akka.Remote""
+//                 debug : {
+//                     receive : on
+//                     autoreceive : on
+//                     lifecycle : on
+//                     event-stream : on
+//                     unhandled : on
+//                 }
+//             }
+//             remote {
+//                 helios.tcp {
+//                     port = 9090
+//                     hostname = 10.20.115.11
+//                 }
+//             }
+//         }"
+//     )
+
+let config = 
     ConfigurationFactory.ParseString(
-        @"akka {
-            actor {
-                provider = ""Akka.Remote.RemoteActorRefProvider, Akka.Remote""
-                debug : {
-                    receive : on
-                    autoreceive : on
-                    lifecycle : on
-                    event-stream : on
-                    unhandled : on
-                }
-            }
-            remote {
-                helios.tcp {
-                    port = 9090
-                    hostname = 10.20.115.11
-                }
-            }
-        }"
-    )
-
-let system = ActorSystem.Create( "twitter_sim",configuration)
+        @"akka {            
+            log-dead-letters = 0
+            log-dead-letters-during-shutdown = off
+        }")
+    
+let system = ActorSystem.Create("TwitterClone",config)
 
 let mutable numNodes = fsi.CommandLineArgs.[1] |> int
 let tweets = fsi.CommandLineArgs.[2] |> int
@@ -57,13 +65,13 @@ let constructTweet =
     let hashCount = Constants.Constants.hashtags
     let rnd1 = random.Next(tweetCount.Length)
     let rnd2 = random.Next(hashCount.Length)
-    str <- tweetCount[rnd1]
-    str <- str + " " + hashCount[rnd2]
+    str <- tweetCount.[rnd1]
+    str <- str + " " + hashCount.[rnd2]
     str <- str + " @User_" + (random.Next(numNodes-1) |> string)
     str
 
 type apiComm = {
-    reqId: String
+    // reqId: String
     userId: String
     content: String
     query: String
@@ -86,13 +94,14 @@ let User (userid: int) (mailbox: Actor<_>) =
         actor {
             let! jsonMessage = mailbox.Receive()
             let message = Json.deserialize jsonMessage
+            Console.WriteLine(message.ToString())
             let action = message.query
 
             if timer.Elapsed.TotalSeconds - timerState > 1.0 && status = "offline" then
 
                 let payload = {
 
-                    reqId = "1234"
+                    // reqId = "1234"
                     userId = id |> string
                     content = ""
                     query = "UpdateFeed"
@@ -104,9 +113,9 @@ let User (userid: int) (mailbox: Actor<_>) =
                 timerState <- timer.Elapsed.TotalSeconds
             
             match action with
-            | "Login" ->    let Guid = Guid.NewGuid()
+            | "Login" ->    //let Guid = Guid.NewGuid()
                             let apiComm = {
-                                reqId = Guid.ToString()
+                                // reqId = Guid.ToString()
                                 userId = userid |> string
                                 content = ""
                                 query = "Login"
@@ -115,9 +124,9 @@ let User (userid: int) (mailbox: Actor<_>) =
                             // Console.WriteLine(apiComm)
 
             | "Register" -> Console.WriteLine("%s has been registered", userid)
-                            let Guid = Guid.NewGuid()
+                            //let Guid = Guid.NewGuid()
                             let apiComm = {
-                                reqId = Guid.ToString()
+                                // reqId = Guid.ToString()
                                 userId = userid |> string
                                 content = ""
                                 query = "SignUp"
@@ -125,9 +134,9 @@ let User (userid: int) (mailbox: Actor<_>) =
                             engineMessage apiComm
                             // Console.WriteLine(apiComm)
 
-            | "Subscribe" -> let Guid = Guid.NewGuid()
+            | "Subscribe" -> //let Guid = Guid.NewGuid()
                              let apiComm = {
-                                reqId = Guid.ToString()
+                                // reqId = Guid.ToString()
                                 userId = userid |> string
                                 content = ""
                                 query = "Subscribe"
@@ -139,9 +148,9 @@ let User (userid: int) (mailbox: Actor<_>) =
                             Console.WriteLine("User %s tweeted %s", id.ToString liveTweet)
                             myTweets <- List.append myTweets [liveTweet]
                             myTweetsCount <- myTweetsCount + 1
-                            let Guid = Guid.NewGuid()
+                            //let Guid = Guid.NewGuid()
                             let apiComm = {
-                                reqId = Guid.ToString()
+                                // reqId = Guid.ToString()
                                 userId = userid |> string
                                 content = liveTweet
                                 query = "Tweet"
@@ -149,9 +158,9 @@ let User (userid: int) (mailbox: Actor<_>) =
                             engineMessage apiComm
 
             
-            | "Retweet" ->  let Guid = Guid.NewGuid()
+            | "Retweet" ->  //let Guid = Guid.NewGuid()
                             let apiComm = {
-                                reqId = Guid.ToString()
+                                // reqId = Guid.ToString()
                                 userId = userid |> string
                                 content = ""
                                 query = "Retweet"
@@ -176,21 +185,25 @@ let Supervisor (numNodes: int) (tweets: int) (mailbox: Actor<_>) =
             let! message = mailbox.Receive()
 
             match message with
-            | "Initiate" -> nodesList <- [ for i in 1 .. currentNodes do yield (spawn system ("Node_" + string (i)))  ]
+            | "Initiate" -> nodesList <- [ for i in 1 .. currentNodes do yield (spawn system ("User_" + string (i))) (User i) ]
                             Console.WriteLine(nodesList)
-
-                            let apiComm = {
-                                reqId = ""
+                            // let Guid = Guid.NewGuid()
+                            let payload = {
+                                // reqId = Guid.ToString() 
                                 userId = ""
                                 content = ""
-                                query = "register"
+                                query = "Register"
                             }
 
-                            for j in 0..nodesList-1 do
-                                nodesList.[j] <! 
+                            for j in nodesList do
+                                userMessage payload j
+                                Console.WriteLine(j)
 
-
+            | _ -> ignore()
 
             return! loop ()
         }
     loop()
+
+let supervisorRef = spawn system "supervisorRef" (Supervisor numNodes tweets)
+supervisorRef <! "Initiate"
