@@ -32,3 +32,10 @@ module Constants =
         "Isn't Twitter so much fun";
         "Covid is back"
     ]
+
+    let search = [
+        "omicron";
+        "geazy";
+        "teamwork";
+        "Covid"
+    ]

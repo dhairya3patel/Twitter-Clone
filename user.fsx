@@ -1,6 +1,7 @@
 #r "nuget: Akka.FSharp"
 #r "nuget: Akka.Remote"
 #r "nuget: FSharp.Json"
+#load "./constants.fsx"
 
 open System
 open Akka.Actor
@@ -8,6 +9,7 @@ open Akka.FSharp
 open Akka.Configuration
 open System.Text
 open FSharp.Json
+open Constants.Constants
 
 let configuration =
     ConfigurationFactory.ParseString(
@@ -36,6 +38,8 @@ let system = ActorSystem.Create( "twitter_sim",configuration)
 let mutable numNodes = fsi.CommandLineArgs.[1] |> int
 let tweets = fsi.CommandLineArgs.[2] |> int
 
+let random = System.Random()
+
 let userMessage msg userid= 
     let selectedUser = select ("akka.tcp://TwitterClone@127.0.0.1:9002/user/User_" + (userid |> string)) system
     let message = Json.serialize(msg)
@@ -45,6 +49,17 @@ let engineMessage msg=
     let engineActor = select ("akka.tcp://TwitterClone@127.0.0.1:9001/user/engine") system
     let message = Json.serialize(msg)
     engineActor <! message
+
+let constructTweet = 
+    let mutable str = String.Empty
+    let tweetCount = Constants.Constants.tweets
+    let hashCount = Constants.Constants.hashtags
+    let rnd1 = random.Next(tweetCount.Length)
+    let rnd2 = random.Next(hashCount.Length)
+    str <- tweetCount[rnd1]
+    str <- str + " " + hashCount[rnd2]
+    str <- str + " @User_" + (random.Next(numNodes-1) |> string)
+    str
 
 
 let User (userid: int) (mailbox: Actor<_>) = 
@@ -60,16 +75,36 @@ let User (userid: int) (mailbox: Actor<_>) =
             | "Register" -> Console.WriteLine("%s has been registered", userid)
                             let apiComm = {
                                 reqId = ""
-                                userId = userid
+                                userId = userid |> string
                                 content = ""
                                 query = "SignUp"
                             }
                             engineMessage apiComm
                             Console.WriteLine(apiComm)
 
+            | "Subscribe" -> 
+                            let apiComm = {
+                                reqId = ""
+                                userId = userid |> string
+                                content = ""
+                                query = "Subscribe"
+                            }
+                            engineMessage apiComm
+                            // Console.WriteLine(apiComm)
+            
+            | "Retweet" -> 
+                            let apiComm = {
+                                reqId = ""
+                                userId = userid |> string
+                                content = ""
+                                query = "Retweet"
+                            }
+                            engineMessage apiComm
+                            // Console.WriteLine(apiComm)
 
-            | "Tweet" -> 
-
+            // | "Tweet" -> 
+            | _ -> ignore
+            
             return! loop ()
         }
         loop()
