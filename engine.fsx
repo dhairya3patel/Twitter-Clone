@@ -31,7 +31,7 @@ let config =
             remote {
                 helios.tcp {
                     port = 9091
-                    hostname = 10.20.115.7
+                    hostname = 127.0.0.1
                 }
             }
         }")
@@ -54,7 +54,7 @@ let serverMessage payload =
 
 
 let userMessage payload id = 
-    let user = select ("akka.tcp://TwitterClone@127.0.0.1:9001/user/User_" + id.ToString()) system
+    let user = select ("akka.tcp://TwitterClone@127.0.0.1:9092/user/User_" + id.ToString()) system
 
     let request = Json.serialize payload
 
@@ -81,10 +81,10 @@ let getLogFile =
         logger.Close()
 
 let getTimeStamp = 
-    // let zone = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time")
+    let zone = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time")
     let utc = DateTime.UtcNow
-    // let timeStamp = TimeZoneInfo.ConvertTimeFromUtc(utc, zone);
-    utc.ToString("MMM-dd-yyyy HH:mm:ss tt")
+    let timeStamp = TimeZoneInfo.ConvertTimeFromUtc(utc, zone);
+    timeStamp.ToString("MMM-dd-yyyy HH:mm:ss tt")
 
 let logRequest (message:apiComm)= 
 
@@ -125,38 +125,40 @@ let serverActor (mailbox: Actor<_>) =
             false    
 
     let searchResults (query:string) = 
-        let output = new Dictionary<string, list<String>>()
+        let mutable output = Map.empty
         let mutable tweetOutput = List.Empty
-        let queryLower = query.ToLower.ToString()
+        let queryLower = query//.ToLower.ToString()
         for tweet in allTweets do
             let words = tweet.ToString().Split(" ")
             let mutable tempBreak = false
             let mutable searchIndex = 0
             while not tempBreak && searchIndex < words.Length do
-                let temp = words.[searchIndex].ToLower.ToString()
-                if temp.Contains queryLower then
+                let temp = words.[searchIndex]//.ToLower.ToString()
+                if temp.Contains queryLower || temp = queryLower then
                     tweetOutput <- List.append tweetOutput [tweet]
                     tempBreak <- true
                 else
                     searchIndex <- searchIndex + 1
         let mutable hashOutput = List.Empty
         for key in hashTable.Keys do
-            let temp = key.ToLower.ToString()
-            if temp.Contains queryLower then
+            let temp = key//.ToLower.ToString()
+            if temp.Contains queryLower || temp = queryLower then
                 hashOutput <- List.append hashOutput [key]
 
         let mutable userOutput = List.Empty
         for user in userList do
             let temp = user.ToString().ToLower.ToString()
-            if temp.Contains queryLower then
+            if temp.Contains queryLower || temp = queryLower then
                 userOutput <- List.append userOutput [user]
 
         if userOutput = List.Empty && hashOutput = List.Empty && tweetOutput = List.Empty then
-            output.Add("Output",["No results found for" + query])
+            output <- output.Add("Output",["No results found for " + query])
         else
-            output.Add("tweets",tweetOutput)
-            output.Add("hashTags",hashOutput)
-            output.Add("users",userOutput)
+            output <- output.Add("tweets",tweetOutput)
+            output <- output.Add("hashTags",hashOutput)
+            output <- output.Add("users",userOutput)
+
+        appLog ("Search " + query + ": " + Json.serialize output)
         output
 
     getLogFile
@@ -195,7 +197,6 @@ let serverActor (mailbox: Actor<_>) =
                     else
                         tweetTable.Add(userId,[tweet])
 
-                    Console.WriteLine tweetTable    
 
                     allTweets <-List.append allTweets [tweet]    
 
@@ -275,13 +276,13 @@ let serverActor (mailbox: Actor<_>) =
                 | "Search" ->
                     let query = message.content
 
-                    let searchOutput = Json.serialize (searchResults query)
+                    let searchOutput = searchResults query
 
                     let guid = Guid.NewGuid()
                     let payload = {
                         reqId = guid.ToString()
                         userId = "Server"
-                        content = searchOutput
+                        content = Json.serialize searchOutput
                         query = "SearchResults"
                     }
 
