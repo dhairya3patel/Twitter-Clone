@@ -3,6 +3,7 @@
 #r "nuget: FSharp.Json"
 // #r "nuget: FSharp.Core, 6.0.1"
 #load "./Constants.fsx"
+// #r "nuget: FSharp.Core, 6.0.1"
 
 open System
 open System.Text
@@ -78,7 +79,7 @@ type apiComm = {
 }
 
 
-let User (userid: int) (mailbox: Actor<_>) = 
+let User  (mailbox: Actor<_>) = 
     // let id = userid
     let mutable reqList = []
     let awayTweets = []
@@ -93,8 +94,9 @@ let User (userid: int) (mailbox: Actor<_>) =
     let rec loop () =
         actor {
             let! jsonMessage = mailbox.Receive()
-            let message = Json.deserialize jsonMessage
-            Console.WriteLine(message.ToString())
+            Console.WriteLine("Before" ,jsonMessage.ToString())
+            let message = Json.deserialize<apiComm> jsonMessage
+            Console.WriteLine("Hello" ,message.ToString())
             let action = message.query
 
             if timer.Elapsed.TotalSeconds - timerState > 1.0 && status = "offline" then
@@ -116,18 +118,18 @@ let User (userid: int) (mailbox: Actor<_>) =
             | "Login" ->    //let Guid = Guid.NewGuid()
                             let apiComm = {
                                 // reqId = Guid.ToString()
-                                userId = userid |> string
+                                userId = id |> string
                                 content = ""
                                 query = "Login"
                             }
                             engineMessage apiComm
                             // Console.WriteLine(apiComm)
 
-            | "Register" -> Console.WriteLine("%s has been registered", userid)
+            | "Register" -> Console.WriteLine("%s has been registered", id)
                             //let Guid = Guid.NewGuid()
                             let apiComm = {
                                 // reqId = Guid.ToString()
-                                userId = userid |> string
+                                userId = id |> string
                                 content = ""
                                 query = "SignUp"
                             }
@@ -137,7 +139,7 @@ let User (userid: int) (mailbox: Actor<_>) =
             | "Subscribe" -> //let Guid = Guid.NewGuid()
                              let apiComm = {
                                 // reqId = Guid.ToString()
-                                userId = userid |> string
+                                userId = id |> string
                                 content = ""
                                 query = "Subscribe"
                                 }
@@ -151,7 +153,7 @@ let User (userid: int) (mailbox: Actor<_>) =
                             //let Guid = Guid.NewGuid()
                             let apiComm = {
                                 // reqId = Guid.ToString()
-                                userId = userid |> string
+                                userId = id |> string
                                 content = liveTweet
                                 query = "Tweet"
                                 }
@@ -161,7 +163,7 @@ let User (userid: int) (mailbox: Actor<_>) =
             | "Retweet" ->  //let Guid = Guid.NewGuid()
                             let apiComm = {
                                 // reqId = Guid.ToString()
-                                userId = userid |> string
+                                userId = id |> string
                                 content = ""
                                 query = "Retweet"
                             }
@@ -185,19 +187,20 @@ let Supervisor (numNodes: int) (tweets: int) (mailbox: Actor<_>) =
             let! message = mailbox.Receive()
 
             match message with
-            | "Initiate" -> nodesList <- [ for i in 1 .. currentNodes do yield (spawn system ("User_" + string (i))) (User i) ]
-                            Console.WriteLine(nodesList)
+            | "Initiate" -> nodesList <- [ for i in 1 .. currentNodes do yield (spawn system ("User_" + string (i))) User ]
+                            // Console.WriteLine(nodesList)
                             // let Guid = Guid.NewGuid()
                             let payload = {
                                 // reqId = Guid.ToString() 
-                                userId = ""
-                                content = ""
+                                userId = "" 
+                                content = "" 
                                 query = "Register"
                             }
 
                             for j in nodesList do
-                                userMessage payload j
-                                Console.WriteLine(j)
+                                j <! (Json.serialize payload)
+                            // Console.WriteLine(payload)
+                            // Console.WriteLine("Hello")
 
             | _ -> ignore()
 
