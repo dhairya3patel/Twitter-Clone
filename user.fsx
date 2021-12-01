@@ -90,6 +90,7 @@ type apiComm = {
 
 type Communication = 
     | Initiate of string
+    | Done of String
 
 
 
@@ -162,29 +163,32 @@ let User (mailbox: Actor<_>) =
                              engineMessage apiComm
                             // Console.WriteLine(apiComm)
 
-            | "Tweet" ->    let constructTweet = 
-                                let mutable str = String.Empty
-                                let tweetCount = Constants.Constants.tweets
-                                let hashCount = Constants.Constants.hashtags
-                                let rnd1 = random.Next(tweetCount.Length)
-                                let rnd2 = random.Next(hashCount.Length)
-                                str <- tweetCount.[rnd1]
-                                str <- str + " " + hashCount.[rnd2]
-                                str <- str + " @User_" + (random.Next(numNodes-1) |> string)
-                                str
-            
-                            let liveTweet = constructTweet
-                            Console.WriteLine("User " + id.ToString() + " tweeted " + liveTweet)
-                            myTweets <- List.append myTweets [liveTweet]
-                            myTweetsCount <- myTweetsCount + 1
-                            let guid = Guid.NewGuid()
-                            let apiComm = {
-                                reqId = guid.ToString()
-                                userId = userId
-                                content = liveTweet
-                                query = "Tweet"
-                                }
-                            engineMessage apiComm
+            | "Tweet" ->    
+                let constructTweet = 
+                    let mutable str = String.Empty
+                    let tweetCount = Constants.Constants.tweets
+                    let hashCount = Constants.Constants.hashtags
+                    let rnd1 = random.Next(tweetCount.Length)
+                    let rnd2 = random.Next(hashCount.Length)
+                    str <- tweetCount.[rnd1]
+                    str <- str + " " + hashCount.[rnd2]
+                    str <- str + " @User_" + (random.Next(1,numNodes) |> string)
+                    str
+                if myTweetsCount < tweets then
+                    let liveTweet = constructTweet
+                    Console.WriteLine("User " + id.ToString() + " tweeted " + liveTweet)
+                    myTweets <- List.append myTweets [liveTweet]
+                    myTweetsCount <- myTweetsCount + 1
+                    let guid = Guid.NewGuid()
+                    let apiComm = {
+                        reqId = guid.ToString()
+                        userId = userId
+                        content = liveTweet
+                        query = "Tweet"
+                        }
+                    engineMessage apiComm
+                else
+                    supervisorRef <! Done("Done")
 
             
             | "Retweet" ->  let guid = Guid.NewGuid()
@@ -266,7 +270,7 @@ let User (mailbox: Actor<_>) =
                                                         reqId = guid.ToString()
                                                         userId = userId
                                                         content = ""
-                                                        query = "Login"
+                                                        query = "Connect"
                                                     }
                                                     userMessage apiComm id 
 
@@ -281,35 +285,55 @@ let User (mailbox: Actor<_>) =
                             //                 }
                             // userMessage apiComm id
 
-            | "Logout" -> status <- "offline"
-
-            | "Connect" -> status <- "online"
-            // | "Tweet" -> 
-            | _ -> ignore()
-
-            if myTweetsCount < tweets then
+            | "Logout" -> 
+                status <- "offline"
                 let guid = Guid.NewGuid()
                 let apiComm = {
-                                reqId = guid.ToString()
-                                userId = userId
-                                content = ""
-                                query = "Run"
-                                }
-                let mutable counter = 0
-                while counter < 10 do
-                    counter <- counter + 1
-                userMessage apiComm id
-            else
-                Console.WriteLine ("User " + id.ToString() + " Tweet count " + myTweetsCount.ToString())
+                    reqId = guid.ToString()
+                    userId = userId
+                    content = ""
+                    query = "Logout"
+                }
+                engineMessage apiComm            
+
+            | "Connect" -> 
+                status <- "online"
+                let guid = Guid.NewGuid()
+                let apiComm = {
+                    reqId = guid.ToString()
+                    userId = userId
+                    content = ""
+                    query = "Login"
+                }
+                engineMessage apiComm
+
+            | _ -> ignore()
+
+            // if myTweetsCount < tweets then
+            //     let guid = Guid.NewGuid()
+            //     let apiComm = {
+            //                     reqId = guid.ToString()
+            //                     userId = userId
+            //                     content = ""
+            //                     query = "Run"
+            //                     }
+            //     let mutable counter = 0
+            //     while counter < 10 do
+            //         counter <- counter + 1
+            //     userMessage apiComm id
+            // else
+            //     Console.WriteLine ("User " + id.ToString() + " Tweet count " + myTweetsCount.ToString())
 
             return! loop ()
         }
     loop()
-
+let mutable time = 0
 let Supervisor (numNodes: int) (tweets: int) (mailbox: Actor<_>) = 
     let currentNodes = numNodes
     let mutable nodesList = []
     let numTweets = tweets
+    let mutable doneList = Set.empty
+    let timer = Diagnostics.Stopwatch()
     let rec loop () =
         actor {
             let! message = mailbox.Receive()
@@ -317,7 +341,7 @@ let Supervisor (numNodes: int) (tweets: int) (mailbox: Actor<_>) =
             match message with
             | Initiate(_) -> 
                 nodesList <- [ for i in 1 .. currentNodes do yield (spawn system ("User_" + string (i))) User ]
-                Console.WriteLine(nodesList.ToString())
+                //Console.WriteLine(nodesList.ToString())
                 let guid = Guid.NewGuid()
                 let payload = {
                     reqId = guid.ToString() 
@@ -327,7 +351,7 @@ let Supervisor (numNodes: int) (tweets: int) (mailbox: Actor<_>) =
                 }
 
                 nodesList |> List.iter (fun node -> node <! Json.serialize payload)
-
+                timer.Start()
                 let payload2 = {
                     reqId = guid.ToString() 
                     userId = "Supervisor" 
@@ -335,8 +359,16 @@ let Supervisor (numNodes: int) (tweets: int) (mailbox: Actor<_>) =
                     query = "Run"
                 }
                 
-                nodesList |> List.iter (fun node -> system.Scheduler.ScheduleTellOnce(TimeSpan.FromSeconds(2.0),node , Json.serialize(payload2)))
-                
+                nodesList |> List.iter (fun node -> system.Scheduler.ScheduleTellRepeatedly(TimeSpan.FromSeconds(2.0),TimeSpan.FromSeconds(1.0),node , Json.serialize(payload2)))
+                // nodesList |> List.iter 
+
+            | Done (_) ->
+                doneList <- doneList.Add(mailbox.Sender())
+                if doneList.Count = numNodes then
+                    time <- timer.ElapsedMilliseconds |> int
+                    system.Terminate() |> ignore
+
+                    
 
             return! loop ()
         }
@@ -344,4 +376,6 @@ let Supervisor (numNodes: int) (tweets: int) (mailbox: Actor<_>) =
 
 let supervisorRef = spawn system "supervisorRef" (Supervisor numNodes tweets)
 supervisorRef <! Initiate("Initiate")
+
 system.WhenTerminated.Wait()
+Console.WriteLine("Time " + time.ToString())

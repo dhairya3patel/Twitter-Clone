@@ -51,10 +51,10 @@ let serverMessage payload =
     let request = Json.serialize payload
 
     server <! request
-
+// User_
 
 let userMessage payload id = 
-    let user = select ("akka.tcp://TwitterClone@127.0.0.1:9092/user/User_" + id.ToString()) system
+    let user = select ("akka.tcp://TwitterClone@127.0.0.1:9092/user/" + id.ToString()) system
 
     let request = Json.serialize payload
 
@@ -226,8 +226,8 @@ let serverActor (mailbox: Actor<_>) =
                             content = userId + " mentioned you in " + tweet
                             query  = "LiveFeed"
                         }
-                        let menId = mention.ToString().Split("_").[1]
-                        userMessage payload menId
+                        
+                        userMessage payload mention
 
                     if followers.ContainsKey userId then
                         for follower in followers.[userId] do
@@ -264,7 +264,7 @@ let serverActor (mailbox: Actor<_>) =
                                 reqId = guid.ToString()
                                 userId = "Server"
                                 content = userId + " Re - tweeted your tweet " + res 
-                                query  = "ReTweetNotif"
+                                query  = "LiveFeed"
                             }
 
                             userMessage payload destUser
