@@ -174,7 +174,7 @@ let User (mailbox: Actor<_>) =
                                 reqId = guid.ToString()
                                 userId = userId
                                 content = "User_" + (tempVal |> string)
-                                query = "Subscribe"
+                                query = "Follow"
                                 }
                              engineMessage apiComm
                             // Console.WriteLine(apiComm)

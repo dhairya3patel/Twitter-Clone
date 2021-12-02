@@ -158,6 +158,7 @@ let serverActor (mailbox: Actor<_>) =
             output <- output.Add("hashTags",hashOutput)
             output <- output.Add("users",userOutput)
 
+        Console.WriteLine ("Search " + query + ": " + Json.serialize output)
         appLog ("Search " + query + ": " + Json.serialize output)
         output
 
@@ -229,7 +230,9 @@ let serverActor (mailbox: Actor<_>) =
                         
                         userMessage payload mention
 
+
                     if followers.ContainsKey userId then
+                        Console.WriteLine (userId + " " + followers.[userId].Length.ToString())
                         for follower in followers.[userId] do
                             if isOnline follower then
                                 let guid = Guid.NewGuid()
@@ -281,6 +284,8 @@ let serverActor (mailbox: Actor<_>) =
 
                     if following.ContainsKey userId then
                         following.[userId] <- List.append following.[userId] [followed]
+                    else
+                        following.Add(userId,[followed])    
 
                 | "Search" ->
                     let query = message.content
