@@ -103,9 +103,12 @@ let User (mailbox: Actor<_>) =
     let mutable reqList = []
     let mutable awayTweets = []
     let mutable myTweets = []
+    let mutable subscribers = []
     let mutable myTweetsCount = 0
+    let mutable newSubscriber = null
     let timer = Diagnostics.Stopwatch()
     let mutable timerState = 0.0
+    let mutable tempVal = 0
     // let mutable supervisorRef = mailbox.Self
     let id = mailbox.Self.Path.Name.Split("_").[1] |> int
     let userId = mailbox.Self.Path.Name
@@ -159,10 +162,18 @@ let User (mailbox: Actor<_>) =
                             // Console.WriteLine(apiComm)
 
             | "Subscribe" -> let guid = Guid.NewGuid()
+                             if subscribers.IsEmpty then
+                                tempVal <- random.Next(numNodes - 1)
+                                subscribers <- List.append subscribers [tempVal]
+                             else
+                                tempVal <- random.Next(numNodes - 1)
+                                while List.contains tempVal subscribers do
+                                    tempVal <- random.Next(numNodes - 1)
+                                
                              let apiComm = {
                                 reqId = guid.ToString()
                                 userId = userId
-                                content = ""
+                                content = "User_" + (tempVal |> string)
                                 query = "Subscribe"
                                 }
                              engineMessage apiComm
