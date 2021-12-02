@@ -14,7 +14,8 @@ open System.Collections.Generic
 open System.IO
 
 
-let numTweets = fsi.CommandLineArgs.[1] |> int
+let numNodes = fsi.CommandLineArgs.[1] |> int
+let numTweets = fsi.CommandLineArgs.[2] |> int
 let mutable terminate = false
 
 let HASHTAG = '#'
@@ -185,6 +186,18 @@ let serverActor (mailbox: Actor<_>) =
 
                 | "SignUp" ->
                     userList <- List.append userList [userId]
+                    let id = userId.Split("_").[1] |> int
+                    for i in 1..numNodes/(id+2) do
+                        if i<>id then
+                            let guid = Guid.NewGuid()
+                            let payload = {
+                                reqId = guid.ToString()
+                                userId = "Server"
+                                content = userId
+                                query  = "Subscribe"                                
+                            }
+                            let user = "User_" + i.ToString()
+                            userMessage payload user
 
                 | "Tweet" -> 
 
@@ -279,6 +292,8 @@ let serverActor (mailbox: Actor<_>) =
                     else 
                         followers.Add(followed,[userId])
 
+                    Console.WriteLine (followed + " " + followers.[followed].Length.ToString())
+                    appLog (followed + " " + followers.[followed].Length.ToString())
                     if following.ContainsKey userId then
                         following.[userId] <- List.append following.[userId] [followed]
 

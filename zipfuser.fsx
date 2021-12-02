@@ -169,14 +169,22 @@ let User (mailbox: Actor<_>) =
                                 tempVal <- random.Next(numNodes - 1)
                                 while List.contains tempVal subscribers do
                                     tempVal <- random.Next(numNodes - 1)
-                                
-                             let apiComm = {
-                                reqId = guid.ToString()
-                                userId = userId
-                                content = "User_" + (tempVal |> string)
-                                query = "Subscribe"
-                                }
-                             engineMessage apiComm
+                             if message.content = "" then
+                                let apiComm = {
+                                    reqId = guid.ToString()
+                                    userId = userId
+                                    content = "User_" + (tempVal |> string)
+                                    query = "Follow"
+                                    }
+                                engineMessage apiComm
+                             else
+                                let apiComm = {
+                                    reqId = guid.ToString()
+                                    userId = userId
+                                    content = message.content
+                                    query = "Follow"
+                                    }
+                                engineMessage apiComm
                             // Console.WriteLine(apiComm)
 
             | "Tweet" ->    

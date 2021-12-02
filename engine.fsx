@@ -198,7 +198,8 @@ let serverActor (mailbox: Actor<_>) =
                     else
                         tweetTable.Add(userId,[tweet])
 
-
+                    Console.WriteLine (userId + " " + tweetTable.[userId].ToString())
+                    appLog (userId + " " + tweetTable.[userId].ToString())
                     allTweets <-List.append allTweets [tweet]    
 
                     if count >= numTweets then
