@@ -270,7 +270,7 @@ let User (mailbox: Actor<_>) =
                                                         reqId = guid.ToString()
                                                         userId = userId
                                                         content = ""
-                                                        query = "Subscribe"
+                                                        query = "Tweet"
                                                     }
                                                     userMessage apiComm id 
 
@@ -397,9 +397,6 @@ let Supervisor (numNodes: int) (tweets: int) (mailbox: Actor<_>) =
                     time <- timer.ElapsedMilliseconds |> int
                     Console.WriteLine("Time " + time.ToString())
                     system.Terminate() |> ignore
-
-
-                    
 
             return! loop ()
         }
