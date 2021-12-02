@@ -14,6 +14,7 @@ open System.Text
 open FSharp.Json
 // open Constants.Constants
 
+let mutable supervisorRef = null
 let configuration =
     ConfigurationFactory.ParseString(
         @"akka {
@@ -69,7 +70,7 @@ let userMessage msg userid=
 
 
 let engineMessage msg= 
-    let engineActor = select ("akka.tcp://TwitterClone@10.25.115.7:9091/user/Server") system
+    let engineActor = select ("akka.tcp://TwitterClone@127.0.0.1:9091/user/Server") system
     let message = Json.serialize(msg)
     engineActor <! message
 
@@ -105,7 +106,7 @@ let User (mailbox: Actor<_>) =
     let mutable myTweetsCount = 0
     let timer = Diagnostics.Stopwatch()
     let mutable timerState = 0.0
-    let mutable supervisorRef = mailbox.Self
+    // let mutable supervisorRef = mailbox.Self
     let id = mailbox.Self.Path.Name.Split("_").[1] |> int
     let userId = mailbox.Self.Path.Name
     let mutable status = "online"
@@ -146,6 +147,7 @@ let User (mailbox: Actor<_>) =
                             // Console.WriteLine(apiComm)
 
             | "Register" -> Console.WriteLine(id.ToString() + " has been registered")
+                            //supervisorRef <- mailbox.Sender()
                             let guid = Guid.NewGuid()
                             let apiComm = {
                                 reqId = guid.ToString()
@@ -223,7 +225,7 @@ let User (mailbox: Actor<_>) =
 
             | "Run" -> if status = "online" then
                             let rnd = Constants.Constants.actions.[random.Next(Constants.Constants.actions.Length)]
-                            Console.WriteLine("Action selected: " + rnd)
+                            Console.WriteLine(userId.ToString() + "Action selected: " + rnd)
                             match rnd with 
                             | "tweetAction" ->  let guid = Guid.NewGuid()
                                                 let apiComm = {
@@ -261,23 +263,33 @@ let User (mailbox: Actor<_>) =
                                                     }
                                                     userMessage apiComm id 
 
-                            | "disconnectAction" ->     let guid = Guid.NewGuid()
-                                                        let apiComm = {
+                            | "disconnectAction" ->     let mutable guid = Guid.NewGuid()
+                                                        let mutable apiComm = {
                                                             reqId = guid.ToString()
                                                             userId = userId
                                                             content = ""
                                                             query = "Logout"
                                                         }
-                                                        userMessage apiComm id 
+                                                        userMessage apiComm id
+                                                        // Console.WriteLine "Test"
+                                                        guid <- Guid.NewGuid()
+                                                        apiComm <- {
+                                                            reqId = guid.ToString()
+                                                            userId = userId
+                                                            content = ""
+                                                            query = "Connect"
+                                                        }
+                                                        
+                                                        system.Scheduler.ScheduleTellOnce(TimeSpan.FromSeconds(1.0),mailbox.Self,Json.serialize apiComm)
 
-                            | "connectAction" ->    let guid = Guid.NewGuid()
-                                                    let apiComm = {
-                                                        reqId = guid.ToString()
-                                                        userId = userId
-                                                        content = ""
-                                                        query = "Connect"
-                                                    }
-                                                    userMessage apiComm id 
+                            // | "connectAction" ->    let guid = Guid.NewGuid()
+                            //                         let apiComm = {
+                            //                             reqId = guid.ToString()
+                            //                             userId = userId
+                            //                             content = ""
+                            //                             query = "Login"
+                            //                         }
+                                                    // userMessage apiComm id 
 
                             | _ -> ignore()
 
@@ -303,6 +315,7 @@ let User (mailbox: Actor<_>) =
 
             | "Connect" -> 
                 status <- "online"
+                Console.WriteLine (userId + " Connect")
                 let guid = Guid.NewGuid()
                 let apiComm = {
                     reqId = guid.ToString()
@@ -342,7 +355,7 @@ let Supervisor (numNodes: int) (tweets: int) (mailbox: Actor<_>) =
     let rec loop () =
         actor {
             let! message = mailbox.Receive()
-
+            supervisorRef <- mailbox.Self
             match message with
             | Initiate(_) -> 
                 nodesList <- [ for i in 1 .. currentNodes do yield (spawn system ("User_" + string (i))) User ]
@@ -364,14 +377,16 @@ let Supervisor (numNodes: int) (tweets: int) (mailbox: Actor<_>) =
                     query = "Run"
                 }
                 
-                nodesList |> List.iter (fun node -> system.Scheduler.ScheduleTellRepeatedly(TimeSpan.FromSeconds(2.0),TimeSpan.FromSeconds(1.0),node , Json.serialize(payload2)))
+                nodesList |> List.iter (fun node -> system.Scheduler.ScheduleTellRepeatedly(TimeSpan.FromSeconds(2.0),TimeSpan.FromSeconds(1.0),node , Json.serialize payload2))
                 // nodesList |> List.iter 
 
             | Done (_) ->
                 doneList <- doneList.Add(mailbox.Sender())
                 if doneList.Count = numNodes then
                     time <- timer.ElapsedMilliseconds |> int
+                    Console.WriteLine("Time " + time.ToString())
                     system.Terminate() |> ignore
+
 
                     
 
@@ -379,8 +394,8 @@ let Supervisor (numNodes: int) (tweets: int) (mailbox: Actor<_>) =
         }
     loop()
 
-let supervisorRef = spawn system "supervisorRef" (Supervisor numNodes tweets)
-supervisorRef <! Initiate("Initiate")
+let supervisor = spawn system "supervisorRef" (Supervisor numNodes tweets)
+supervisor <! Initiate("Initiate")
 
 system.WhenTerminated.Wait()
 Console.WriteLine("Time " + time.ToString())

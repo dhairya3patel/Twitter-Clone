@@ -44,5 +44,5 @@ module Constants =
         "retweetAction";
         "subscribeAction";
         "disconnectAction";
-        "connectAction"
+        //"connectAction"
     ]
